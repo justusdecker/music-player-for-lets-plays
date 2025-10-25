@@ -4,6 +4,23 @@ import tkinter.ttk as ttk
 from threading import Thread
 import os
 pg.mixer.init()
+
+"""
++ Adding tracks to playlist
++ Save playlist
++ Deleting Tracks from playlist
++ Loop
++ Shuffle
++ Next
++ Last
+
+Final:
+
+2 Seperate Functionalitys:
+    1. Creating the playlist
+    2. play the audio
+"""
+
 P = 'E:/musik/sortiert/Nightcore/'
 TRACKS = [P + t for t in os.listdir(P)]
 
@@ -14,10 +31,17 @@ def btn_crt(master: tk.Widget, text: str = '', command = lambda:print('This btn 
     widget = ttk.Button(master,text=text,command=command)
     widget.pack(*options)
     return widget
+
+def slr_crt(master: tk.Widget, method: int = PACK, options: dict = {}) -> tuple[ttk.Scale, tk.DoubleVar]:
+    var = tk.DoubleVar()
+    widget = ttk.Scale(master,value=0.5,from_=0,to=1.,variable=var)
+    widget.pack(*options)
+    
+    return widget, var
     
 def tw_crt(master: tk.Widget,method: int = PACK, options: dict = {}) -> ttk.Treeview:
     widget = ttk.Treeview(master,columns=['Tracks'], show='headings')
-    widget.pack(*options)
+    widget.pack(*options, fill=tk.X)
     return widget
 
 class Application(tk.Tk):
@@ -38,6 +62,8 @@ class Application(tk.Tk):
             'Play',
             self.__toggle_play
         )
+        self.slr_volume, self.var_volume = slr_crt(self,)
+        self.slr_volume.bind('<B1-Motion>',lambda e: pg.mixer_music.set_volume(self.var_volume.get()))
         
     def __item_select(self,*_):
         if len(self.music_list.selection()) > 1:
