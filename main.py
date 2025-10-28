@@ -7,15 +7,56 @@ from json import load, dumps, JSONDecodeError
 from tkinter.messagebox import showerror
 from random import choice
 import os
+from time import time, sleep
 pg.mixer.init()
 
 """
-+ Deleting Tracks from playlist
-* Fix crash issues after deleting track and or issues after importing and reloading
-* Block importing, load, save etc. while thread is alive
+* Fix Double-Clicking Issue on Track
 """
 
+HTML = """
+<html>
+<head>
+    <meta http-equiv="refresh" content="1">
+    <style>
+        body {
+            font-family: "Lato", sans-serif;
+            font-weight: 800;
+            font-size: 16px;
+            text-align: center;
+        }
 
+        .bg {
+            background: linear-gradient(to left, #e66465, #9198e5);
+            width:fit-content;
+            height: fit-content;
+            border-radius: 15px;
+            text-align: center;
+            padding: 15px;
+        }
+
+        .fg-label {
+            width: fit-content;
+            height: fit-content;
+            border-radius: 5px;
+            text-align: center;
+            color: #ffffff;
+            padding-left: 15px;
+            padding-right: 15px;
+            margin-bottom: 15px;
+            border-color: #ffffffcc;
+            border-style: solid;
+            border-width: 4px;
+        }
+    </style>
+</head>
+<body>
+    
+    __REP__
+
+</body>
+</html>
+"""
 
 
 GRID = 0x0
@@ -38,6 +79,10 @@ def tw_crt(master: tk.Widget,method: int = PACK, options: dict = {}) -> ttk.Tree
     widget.pack(**options, fill=tk.BOTH)
     return widget
 
+def ric(text: str) -> str:
+    #! This Function returns a list object or other than string.
+    return ''.join([i if ord(i) < 128 else ' ' for i in text])
+
 class Application(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
@@ -51,6 +96,7 @@ class Application(tk.Tk):
         self.is_playing_thread_alive = False
         self.track_path: str = ''
         self.next_interrupt = False
+        
         
         self.title('LetsPlayMediaPlayer')
         self.geometry('600x300')
@@ -116,9 +162,8 @@ class Application(tk.Tk):
             return
         if not self.track_path: return
         
-        
+        remaining_show_time_html = time() + 7
         self.set_menu_state('disabled')
-        
         
         self.is_playing_thread_alive = True
         self.is_playing = True
@@ -127,16 +172,21 @@ class Application(tk.Tk):
             self.title(f'LetsPlayMediaPlayer - {self.track_path}')
             if not self.track_path: return
             pg.mixer_music.load(self.track_path)
+            self.__build_html()
+            cleared_html = False
             pg.mixer_music.play()
             while pg.mixer_music.get_busy() and self.is_playing:
                 if self.next_interrupt:
                     break
+                if time() > remaining_show_time_html and not cleared_html:
+                    self.__clear_html()
+                    cleared_html = True
             if self.next_interrupt:
                 self.next_track()
             self.next_interrupt = False
             pg.mixer_music.unload()
             
-            
+        self.__clear_html()
 
         self.btn_play_toggle.configure(text = 'Play')
         self.is_playing_thread_alive = False
@@ -266,12 +316,34 @@ class Application(tk.Tk):
     
     def __remove_duplicates(self):
         self.playlist = list(set(self.playlist))
-    
+ 
+    def __clear_html(self,*_):
+        with open('export.html','w') as f:
+            f.write(HTML.replace('__REP__',''))
     def __build_html(self,*_):
         """
         
         """
-        ...
+        split = self.track_path.split('-',1)
+        
+        if len(split) != 2: 
+            interpret = 'Error'
+            interpret = 'Mismatched String'
+        
+        interpret, title = split
+        interpret = ric(interpret)
+        title = ric(title)
+        edit_html = HTML.replace('__REP__',"""
+                     <div class="bg">
+        <div class="fg-label">
+        __INTERPRET__
+        </div>
+        __TITLE__
+    </div>
+                     """)
+        export_html = edit_html.replace('__INTERPRET__',interpret).replace('__TITLE__',title[:-4])
+        with open('export.html','w') as f:
+            f.write(export_html)
 if __name__ == '__main__':
     APP = Application()
     APP.mainloop()
