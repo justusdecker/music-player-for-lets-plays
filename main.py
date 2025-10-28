@@ -106,10 +106,20 @@ class Application(tk.Tk):
         
         self.create_music_list()
 
+    def set_menu_state(self,state: str = 'disabled'):
+        for o,e in [(self.plmenu,0), (self.plmenu,1), (self.iemenu,0), (self.iemenu,1)]: o.entryconfig(e, state=[state])
+    
     def toggle_play(self):
         # Verbleibe hier bis Loop deaktiviert oder is_playing false
+        if self.is_playing_thread_alive: 
+            self.is_playing = False
+            return
         if not self.track_path: return
-        if self.is_playing_thread_alive: return
+        
+        
+        self.set_menu_state('disabled')
+        
+        
         self.is_playing_thread_alive = True
         self.is_playing = True
         self.btn_play_toggle.configure(text = 'Stop')
@@ -121,13 +131,18 @@ class Application(tk.Tk):
             while pg.mixer_music.get_busy() and self.is_playing:
                 if self.next_interrupt:
                     break
+            if self.next_interrupt:
+                self.next_track()
             self.next_interrupt = False
             pg.mixer_music.unload()
-            self.next_track()
+            
+            
 
         self.btn_play_toggle.configure(text = 'Play')
         self.is_playing_thread_alive = False
-    
+
+        self.set_menu_state('active')
+        
     def __next_track(self, *_):
         self.next_interrupt = True
         
@@ -223,12 +238,13 @@ class Application(tk.Tk):
         for i in self.playlist:
             self.music_list.insert('',0,values=(i,))
         self.music_list.bind('<<TreeviewSelect>>',self.__item_select)
-        self.music_list.bind('<<Delete>>',self.__item_delete)
+        self.music_list.bind('<Delete>',self.__item_delete)
     
     def __item_delete(self,*_):
         for track in self.music_list.selection():
-            if track in self.playlist:
-                self.playlist.remove(track)
+            value = self.music_list.item(track)['values'][0]
+            if value in self.playlist:
+                self.playlist.remove(value)
         self.create_music_list()
     
     def __item_select(self,*_):
