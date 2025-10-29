@@ -10,10 +10,6 @@ import os
 from time import time, sleep
 pg.mixer.init()
 
-"""
-* Fix Double-Clicking Issue on Track
-"""
-
 HTML = """
 <html>
 <head>
@@ -58,8 +54,6 @@ HTML = """
 </html>
 """
 
-
-GRID = 0x0
 PACK = 0x1
 
 def btn_crt(master: tk.Widget, text: str = '', command = lambda:print('This btn has no command'),method: int = PACK, options: dict = {}) -> ttk.Button:
@@ -155,49 +149,40 @@ class Application(tk.Tk):
     def set_menu_state(self,state: str = 'disabled'):
         for o,e in [(self.plmenu,0), (self.plmenu,1), (self.iemenu,0), (self.iemenu,1)]: o.entryconfig(e, state=[state])
     
+    def __play(self):
+        pg.mixer_music.load(self.track_path)
+        pg.mixer_music.play()
+    
     def toggle_play(self):
         # Verbleibe hier bis Loop deaktiviert oder is_playing false
-        if self.is_playing_thread_alive: 
-            self.is_playing = False
-            return
-        if not self.track_path: return
+        
         
         remaining_show_time_html = time() + 7
-        self.set_menu_state('disabled')
-        
-        self.is_playing_thread_alive = True
-        self.is_playing = True
-        self.btn_play_toggle.configure(text = 'Stop')
+
+        self.title(f'LetsPlayMediaPlayer - {self.track_path}')
         while self.is_playing:
-            self.title(f'LetsPlayMediaPlayer - {self.track_path}')
-            if not self.track_path: return
-            pg.mixer_music.load(self.track_path)
+            
+            if not self.track_path: break
+            self.__play()
             self.__build_html()
             cleared_html = False
-            pg.mixer_music.play()
-            while pg.mixer_music.get_busy() and self.is_playing:
-                if self.next_interrupt:
-                    break
+            while (pg.mixer_music.get_busy() and self.is_playing) and not self.next_interrupt:
                 if time() > remaining_show_time_html and not cleared_html:
+                    sleep(0.016)
                     self.__clear_html()
                     cleared_html = True
-            if self.next_interrupt:
-                self.next_track()
-            self.next_interrupt = False
-            pg.mixer_music.unload()
+            self.next_track()
             
         self.__clear_html()
-
-        self.btn_play_toggle.configure(text = 'Play')
         self.is_playing_thread_alive = False
 
-        self.set_menu_state('active')
+        
         
     def __next_track(self, *_):
         self.next_interrupt = True
         
     def next_track(self):
-        
+        if not self.next_interrupt: return
         if self.is_shuffle:
             if not self.playlist:
                 self.track_path = ''
@@ -215,6 +200,8 @@ class Application(tk.Tk):
             if len(self.playlist) <= index:
                 index = 0
             self.track_path = self.playlist[index]
+        self.title(f'LetsPlayMediaPlayer - {self.track_path}')
+        self.next_interrupt = False
         
     def load_playlist(self,*_):
         """
@@ -302,11 +289,24 @@ class Application(tk.Tk):
             self.music_list.selection_clear()
             return
         self.is_playing = False
+        
         self.track_path = ' '.join(self.music_list.item(self.music_list.selection()[0])['values'])
+        while self.is_playing_thread_alive:
+            pass
         self.__toggle_play()
     
     def __toggle_play(self,*_):
-        Thread(target=self.toggle_play).start()
+        if not self.playlist: return
+        if not self.is_playing_thread_alive:
+            self.is_playing_thread_alive = True
+            self.is_playing = True
+            self.set_menu_state('disabled')
+            self.btn_play_toggle.configure(text = 'Stop')
+            Thread(target=self.toggle_play).start()
+        elif self.is_playing_thread_alive:
+            self.is_playing = False
+            self.set_menu_state('active')
+            self.btn_play_toggle.configure(text = 'Play')
         
     def __toggle_shuffle(self, *_):
         self.is_shuffle = not self.is_shuffle
@@ -320,6 +320,7 @@ class Application(tk.Tk):
     def __clear_html(self,*_):
         with open('export.html','w') as f:
             f.write(HTML.replace('__REP__',''))
+            
     def __build_html(self,*_):
         """
         
