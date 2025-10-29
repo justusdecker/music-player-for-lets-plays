@@ -29,4 +29,4 @@ The program requires the following Python libraries:
 
 * **`pygame`:** For music playback (`pg.mixer`).
 * **`tkinter` and `tkinter.ttk`:** For the graphical user interface and widgets.
-* **Standard Libraries:** `threading`, `json`, `os`, `random`.
+* **Standard Libraries:** `threading`, `json`, `os`, `random`, `time`.
